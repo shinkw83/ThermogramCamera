@@ -1,0 +1,17 @@
+*.o
+*.so
+*.log
+cam_agent
+*.tar.gz
+*.swp
+*ptp*
+.cproject
+.project
+.settings
+.autotools
+*.tgz
+.vscode/
+*.tar
+build/
+common/build
+common/lib
