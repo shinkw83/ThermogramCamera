@@ -6,7 +6,7 @@ ENDIF (POLICY CMP0077)
 
 project(cam_agent C CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-psabi")
 
 find_package(Threads REQUIRED)
 find_package(cppzmq REQUIRED)
@@ -34,6 +34,12 @@ target_link_libraries(cam_agent
 	common
 	boost_system
 	log4cplus
+	raspicam
+	raspicam_cv
+	turbojpeg
+	opencv_core
+	opencv_highgui
+	opencv_imgproc
 )
 
 set_target_properties(cam_agent PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)

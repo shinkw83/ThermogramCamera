@@ -1,10 +1,10 @@
 #pragma once
 
-#include <zmq.hpp>
 #include <vector>
 #include <map>
 #include <set>
 #include <mutex>
+#include <zmq.hpp>
 #include <boost/asio.hpp>
 #include <stdarg.h>
 #include <json/json.h>
@@ -14,10 +14,33 @@
 #include "xpacket.h"
 #include "logger.hpp"
 
+enum {
+	RASPICAM_IMAGE = 1,
+	THERMOGRAM_IMAGE = 2
+};
+
+#define OP_RASPICAM_STREAM		1
+#define OP_THERMOGRAM_STREAM	2
+
+typedef struct stream_data {
+	int type;
+	uint32_t index;
+	uint8_t *data;
+	unsigned long length;
+
+	stream_data() {
+		type = 0;
+		index = 0;
+		data = nullptr;
+		length = 0;
+	}
+} stream_data;
+
 class g_data : public singleton_T<g_data> {
 public:
 	g_data() : ctx_() {
-		api_proc_address_ = "inproc://api_proc";
+		stream_from_camera_address_ = "inproc://stream_from_camera";
+		stream_for_client_address_ = "inproc::/stream_for_client";
 	}
 
 	virtual ~g_data() {
@@ -36,9 +59,14 @@ public:
 		return data->ctx_;
 	}
 
-	static const char *api_proc_address() {
+	static const char *stream_from_camera_address() {
 		g_data *data = g_data::GetInstance();
-		return data->api_proc_address_.c_str();
+		return data->stream_from_camera_address_.c_str();
+	}
+
+	static const char *stream_for_client_address() {
+		g_data *data = g_data::GetInstance();
+		return data->stream_for_client_address_.c_str();
 	}
 
 	static void set_web_address(std::string ip, std::string port) {
@@ -108,5 +136,6 @@ private:
 	std::string web_ip_, web_port_;
 	int api_port_;
 
-	std::string api_proc_address_;
+	std::string stream_from_camera_address_;
+	std::string stream_for_client_address_;
 };

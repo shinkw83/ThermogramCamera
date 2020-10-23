@@ -17,20 +17,22 @@ private:
 	void read();
 	void write(xpacket *packet);
 
-	void proc();
+	void stream();
 
 private:
 	tcp::socket sock_;
-	zmq::socket_t proc_sock_;
+	std::shared_ptr<zmq::socket_t> stream_sock_;
 
+	std::mutex cam_mutex_;
 	std::mutex write_mutex_;
 	std::atomic<bool> running_;
-	std::thread proc_th_;
-	std::atomic<bool> proc_run_flag_;
+
+	std::thread stream_th_;
+	std::atomic<bool> run_flag_;
 
 	std::deque<uint8_t> h_prefix_;
-	char recv_buf_[256];
-	char msg_buf_[256];
+	uint8_t recv_buf_[256];
+	uint8_t msg_buf_[256];
 	std::size_t buf_pos_;
 	xpacket *recv_packet_;
 

@@ -1,10 +1,11 @@
 #include "api_client.h"
 
-api_client::api_client(boost::asio::io_context &io) : sock_(io), proc_sock_(g_data::context(), zmq::socket_type::sub) {
-	proc_run_flag_ = true;
+api_client::api_client(boost::asio::io_context &io) : sock_(io) {
+	run_flag_ = true;
 
-	proc_sock_.bind(g_data::api_proc_address());
-	proc_sock_.set(zmq::sockopt::subscribe, "");
+	stream_sock_ = std::make_shared<zmq::socket_t>(g_data::context(), zmq::socket_type::sub);
+	stream_sock_->connect(g_data::stream_for_client_address());
+	stream_sock_->set(zmq::sockopt::subscribe, "");
 
 	recv_step_ = 0;
 	buf_pos_ = 0;
@@ -13,9 +14,9 @@ api_client::api_client(boost::asio::io_context &io) : sock_(io), proc_sock_(g_da
 }
 
 api_client::~api_client() {
-	proc_run_flag_ = false;
-	if (proc_th_.joinable()) {
-		proc_th_.join();
+	run_flag_ = false;
+	if (stream_th_.joinable()) {
+		stream_th_.join();
 	}
 }
 
@@ -26,7 +27,7 @@ tcp::socket &api_client::socket() {
 void api_client::run() {
 	running_ = true;
 
-	proc_th_ = std::thread(&api_client::proc, this);
+	stream_th_ = std::thread(&api_client::stream, this);
 	read();
 }
 
@@ -82,18 +83,84 @@ void api_client::read() {
 			}
 		);
 	} else if (recv_step_ == 2) {
+		std::size_t remain_packet_size = recv_packet_->m_header.h_packet_size - buf_pos_;
+		if (remain_packet_size > 256) {
+			running_ = false;
+			return;
+		}
+		boost::asio::async_read(sock_, boost::asio::buffer(recv_buf_, remain_packet_size),
+			[this](const boost::system::error_code &ec, const long unsigned int &bytes_received)
+			{
+				if (ec) {
+					g_data::log(ERROR_LOG_LEVEL, "[api_client] Read body error[%s]", ec.message().c_str());
+					running_ = false;
+					return;
+				}
 
+				std::memcpy(msg_buf_ + buf_pos_, recv_buf_, bytes_received);
+				buf_pos_ += bytes_received;
+
+				if (buf_pos_ >= recv_packet_->m_header.h_packet_size) {
+					if (msg_buf_[buf_pos_ - 2] == 0xFE and msg_buf_[buf_pos_ = 1] == 0xFF) {
+						if (recv_packet_->m_header.h_packet_size > xpacket::XPACKET_HEADER_SIZE + xpacket::XPACKET_TAIL_SIZE) {
+							recv_packet_->PushMem(msg_buf_ + xpacket::XPACKET_HEADER_SIZE, 
+								recv_packet_->m_header.h_packet_size - xpacket::XPACKET_HEADER_SIZE - xpacket::XPACKET_TAIL_SIZE);
+						}
+						recv_packet_->Pack();
+						// todo command parsing
+						recv_packet_ = nullptr;
+					}
+					buf_pos_ = 0;
+					recv_step_ = 0;
+				}
+				read();
+			}
+		);
 	} else {
 		recv_step_ = 0;
 	}
 }
 
 void api_client::write(xpacket *packet) {
-
+	write_mutex_.lock();
+	boost::asio::async_write(sock_, boost::asio::buffer(packet->GetBuf(), packet->GetTotalPackSize()), 
+		[this](const boost::system::error_code &ec, const long unsigned int&)
+		{
+			if (ec) {
+				g_data::log(ERROR_LOG_LEVEL, "[api_client] Send packet error[%s]", ec.message().c_str());
+				running_ = false;
+			}
+			write_mutex_.unlock();
+		}
+	);
 }
 
-void api_client::proc() {
-	while (proc_run_flag_) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(30));
+void api_client::stream() {
+	while (run_flag_) {
+		zmq::message_t message;
+		auto res = stream_sock_->recv(message, zmq::recv_flags::dontwait);
+		if (res && res.value() > 0) {
+			stream_data *data = message.data<stream_data>();
+			xpacket stream_packet(data->length + 1024);
+			if (data->type == RASPICAM_IMAGE) {
+				stream_packet.m_header.h_command = OP_RASPICAM_STREAM;
+			} else if (data->type == THERMOGRAM_IMAGE) {
+				stream_packet.m_header.h_command = OP_THERMOGRAM_STREAM;
+			}
+			stream_packet.m_header.h_index = data->index;
+			stream_packet.PushDWord(data->length);
+			stream_packet.PushMem(data->data, data->length);
+			stream_packet.Pack();
+
+			std::vector<xpacket *> slices;
+			xpacket::Split(&stream_packet, slices, 1024);
+
+			std::lock_guard<std::mutex> guard(cam_mutex_);
+			for (size_t i = 0; i < slices.size(); i++) {
+				write(slices[i]);
+			}
+		} else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(30));
+		}
 	}
 }
