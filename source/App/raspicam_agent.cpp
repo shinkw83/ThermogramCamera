@@ -1,6 +1,7 @@
 #include "raspicam_agent.h"
 
-raspicam_agent::raspicam_agent() {
+raspicam_agent::raspicam_agent(agent_broker *broker) {
+	broker_ = broker;
 	run_flag_ = true;
 
 	stream_sock_ = std::make_shared<zmq::socket_t>(g_data::context(), zmq::socket_type::push);
@@ -11,6 +12,8 @@ raspicam_agent::raspicam_agent() {
 	frame_rate_ = 20;
 
 	picam_ = std::make_shared<raspicam::RaspiCam_Cv>();
+	broker_->set_picam(picam_);
+
 	jpg_compressor_ = tjInitCompress();
 	jpg_buf_ = tjAlloc(width_ * height_ * 3);
 

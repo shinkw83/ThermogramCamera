@@ -7,7 +7,7 @@ using boost::asio::ip::tcp;
 
 class accept_manager {
 public:
-	accept_manager(int port);
+	accept_manager(int port, agent_broker *broker);
 	~accept_manager();
 
 private:
@@ -25,4 +25,6 @@ private:
 	std::atomic<bool> run_flag_;
 
 	std::vector<api_client *> clients_;
+
+	agent_broker *broker_;
 };

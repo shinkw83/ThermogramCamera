@@ -1,6 +1,7 @@
 #include "accept_manager.h"
 
-accept_manager::accept_manager(int port) : io_(), acceptor_(io_, tcp::endpoint(tcp::v4(), port)) {
+accept_manager::accept_manager(int port, agent_broker *broker) : io_(), acceptor_(io_, tcp::endpoint(tcp::v4(), port)) {
+	broker_ = broker;
 	accept();
 
 	run_flag_ = true;
@@ -31,7 +32,7 @@ void accept_manager::run() {
 }
 
 void accept_manager::accept() {
-	api_client *cli = new api_client(io_);
+	api_client *cli = new api_client(io_, broker_);
 	acceptor_.async_accept(cli->socket(), 
 		[this, cli](const boost::system::error_code &ec)
 		{

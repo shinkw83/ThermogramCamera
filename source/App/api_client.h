@@ -1,12 +1,13 @@
 #pragma once
 
 #include "global.hpp"
+#include "agent_broker.h"
 
 using boost::asio::ip::tcp;
 
 class api_client {
 public:
-	api_client(boost::asio::io_context &io);
+	api_client(boost::asio::io_context &io, agent_broker *broker);
 	~api_client();
 
 	tcp::socket &socket();
@@ -18,6 +19,7 @@ private:
 	void write(xpacket *packet);
 
 	void stream();
+	void command_proc();
 
 private:
 	tcp::socket sock_;
@@ -37,4 +39,6 @@ private:
 	xpacket *recv_packet_;
 
 	int recv_step_;
+
+	agent_broker *broker_;
 };

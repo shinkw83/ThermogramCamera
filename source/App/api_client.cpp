@@ -1,6 +1,9 @@
 #include "api_client.h"
+#include "command.h"
+#include "raspicam_set.h"
 
-api_client::api_client(boost::asio::io_context &io) : sock_(io) {
+api_client::api_client(boost::asio::io_context &io, agent_broker *broker) : sock_(io) {
+	broker_ = broker;
 	run_flag_ = true;
 
 	stream_sock_ = std::make_shared<zmq::socket_t>(g_data::context(), zmq::socket_type::sub);
@@ -17,6 +20,11 @@ api_client::~api_client() {
 	run_flag_ = false;
 	if (stream_th_.joinable()) {
 		stream_th_.join();
+	}
+
+	if (recv_packet_ != nullptr) {
+		delete recv_packet_;
+		recv_packet_ = nullptr;
 	}
 }
 
@@ -36,6 +44,10 @@ bool api_client::is_run() {
 }
 
 void api_client::read() {
+	if (running_ == false) {
+		return;
+	}
+
 	if (recv_step_ == 0) {	// find header prefix
 		while (h_prefix_.size() >= xpacket::PREFIX_SIZE) {
 			h_prefix_.pop_front();
@@ -107,8 +119,7 @@ void api_client::read() {
 								recv_packet_->m_header.h_packet_size - xpacket::XPACKET_HEADER_SIZE - xpacket::XPACKET_TAIL_SIZE);
 						}
 						recv_packet_->Pack();
-						// todo command parsing
-						recv_packet_ = nullptr;
+						command_proc();
 					}
 					buf_pos_ = 0;
 					recv_step_ = 0;
@@ -121,7 +132,28 @@ void api_client::read() {
 	}
 }
 
+void api_client::command_proc() {
+	recv_packet_->ResetPos();
+	uint8_t command = recv_packet_->m_header.h_command;
+
+	if (command == OP_CONTEXTCAM_COMMAND) {
+		xpacket repacket;
+		std::weak_ptr<raspicam::RaspiCam_Cv> picam = broker_->picam();
+		raspicam_set::proc_command(picam, recv_packet_, &repacket);
+		repacket.Pack();
+
+		std::lock_guard<std::mutex> guard(cam_mutex_);
+		write(&repacket);
+	}
+	delete recv_packet_;
+	recv_packet_ = nullptr;
+}
+
 void api_client::write(xpacket *packet) {
+	if (running_ == false) {
+		return;
+	}
+
 	write_mutex_.lock();
 	boost::asio::async_write(sock_, boost::asio::buffer(packet->GetBuf(), packet->GetTotalPackSize()), 
 		[this](const boost::system::error_code &ec, const long unsigned int&)
@@ -143,9 +175,9 @@ void api_client::stream() {
 			stream_data *data = message.data<stream_data>();
 			xpacket stream_packet(data->length + 1024);
 			if (data->type == RASPICAM_IMAGE) {
-				stream_packet.m_header.h_command = OP_RASPICAM_STREAM;
+				stream_packet.m_header.h_command = OP_CONTEXT_STREAM;
 			} else if (data->type == THERMOGRAM_IMAGE) {
-				stream_packet.m_header.h_command = OP_THERMOGRAM_STREAM;
+				stream_packet.m_header.h_command = OP_LPR_STREAM;
 			}
 			stream_packet.m_header.h_index = data->index;
 			stream_packet.PushDWord(data->length);
@@ -158,6 +190,7 @@ void api_client::stream() {
 			std::lock_guard<std::mutex> guard(cam_mutex_);
 			for (size_t i = 0; i < slices.size(); i++) {
 				write(slices[i]);
+				delete slices[i];
 			}
 		} else {
 			std::this_thread::sleep_for(std::chrono::milliseconds(30));

@@ -1,6 +1,7 @@
 #include "websocket_server.h"
 
-websocket_server::websocket_server() {
+websocket_server::websocket_server(agent_broker *broker) {
+	broker_ = broker;
 	run_flag_ = true;
 	open_port_ = 8890;
 

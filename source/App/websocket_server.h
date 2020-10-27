@@ -7,6 +7,7 @@
 #include <websocketpp/base64/base64.hpp>
 
 #include "xpacket.h"
+#include "agent_broker.h"
 
 using websocketpp::connection_hdl;
 using websocketpp::lib::placeholders::_1;
@@ -18,7 +19,7 @@ typedef std::set<connection_hdl, std::owner_less<connection_hdl>> web_connection
 
 class websocket_server {
 public:
-	websocket_server();
+	websocket_server(agent_broker *broker);
 	~websocket_server();
 
 private:
@@ -41,5 +42,7 @@ private:
 	std::mutex conn_mutex_;
 
 	int open_port_;
+	
+	agent_broker *broker_;
 
 };

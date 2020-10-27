@@ -3,10 +3,11 @@
 #include "global.hpp"
 #include <raspicam/raspicam_cv.h>
 #include <turbojpeg.h>
+#include "agent_broker.h"
 
 class raspicam_agent {
 public:
-	raspicam_agent();
+	raspicam_agent(agent_broker *broker);
 	~raspicam_agent();
 
 private:
@@ -28,4 +29,6 @@ private:
 	int height_;
 	int frame_rate_;
 	int compress_rate_;
+
+	agent_broker *broker_;
 };

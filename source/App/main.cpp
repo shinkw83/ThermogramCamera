@@ -1,5 +1,8 @@
 #include "global.hpp"
 #include "config.h"
+#include "raspicam_agent.h"
+#include "accept_manager.h"
+#include "websocket_server.h"
 
 void print_usage() {
 	std::cout << "Usage: cam_agent [-c configuration_file_path]" << std::endl;
@@ -64,6 +67,11 @@ int main(int argc, char **argv) {
 	}
 
 	init_config(config_path);
+
+	agent_broker broker_;
+	raspicam_agent picam_th_(&broker_);
+	accept_manager accept_th_(8880, &broker_);
+	websocket_server websocket_th_(&broker_);
 
 	return 0;
 }
