@@ -35,14 +35,12 @@ void init_config(std::string path) {
 		g_data::set_log_level(ERROR_LOG_LEVEL);
 	}
 
-	std::string web_ip = cfg.str("WEB", "IP", "");
-	std::string web_port = cfg.str("WEB", "PORT", "");
-	g_data::set_web_address(web_ip, web_port);
-
-	int api_port = cfg.getiValue("API", "PORT", 5656);
+	int api_port = cfg.getiValue("OPEN_PORT", "API", 6885);
 	g_data::set_api_port(api_port);
+	int web_port = cfg.getiValue("OPEN_PORT", "WEB", 8890);
+	g_data::set_web_port(web_port);
 
-	g_data::log(INFO_LOG_LEVEL, "[Config] Websocket Ip : %s, Port : %s", web_ip.c_str(), web_port.c_str());
+	g_data::log(INFO_LOG_LEVEL, "[Config] Websocket Port : %d", web_port);
 	g_data::log(INFO_LOG_LEVEL, "[Config] API Port : %d", api_port);
 }
 
@@ -70,8 +68,12 @@ int main(int argc, char **argv) {
 
 	agent_broker broker_;
 	raspicam_agent picam_th_(&broker_);
-	accept_manager accept_th_(8880, &broker_);
+	accept_manager accept_th_(g_data::api_port(), &broker_);
 	websocket_server websocket_th_(&broker_);
+
+	while (true) {
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+	}
 
 	return 0;
 }

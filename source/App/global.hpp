@@ -40,7 +40,10 @@ class g_data : public singleton_T<g_data> {
 public:
 	g_data() : ctx_() {
 		stream_from_camera_address_ = "inproc://stream_from_camera";
-		stream_for_client_address_ = "inproc::/stream_for_client";
+		stream_for_client_address_ = "inproc://stream_for_client";
+
+		int api_port_ = 6885;
+		int web_port_ = 8890;
 	}
 
 	virtual ~g_data() {
@@ -69,16 +72,14 @@ public:
 		return data->stream_for_client_address_.c_str();
 	}
 
-	static void set_web_address(std::string ip, std::string port) {
+	static void set_web_port(int port) {
 		g_data *data = g_data::GetInstance();
-		data->web_ip_ = ip;
 		data->web_port_ = port;
 	}
 
-	static void get_web_address(std::string &ip, std::string &port) {
+	static int web_port() {
 		g_data *data = g_data::GetInstance();
-		ip = data->web_ip_;
-		port = data->web_port_;
+		return data->web_port_;
 	}
 
 	static void set_api_port(int port) {
@@ -86,9 +87,9 @@ public:
 		data->api_port_ = port;
 	}
 
-	static void get_api_port(int &port) {
+	static int api_port() {
 		g_data *data = g_data::GetInstance();
-		port = data->api_port_;
+		return data->api_port_;
 	}
 
 	static void set_log_level(int level) {
@@ -133,8 +134,8 @@ private:
 
 	LogMgrC *logmgr_ = nullptr;
 
-	std::string web_ip_, web_port_;
 	int api_port_;
+	int web_port_;
 
 	std::string stream_from_camera_address_;
 	std::string stream_for_client_address_;

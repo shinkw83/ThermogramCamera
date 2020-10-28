@@ -30,6 +30,8 @@ private:
 	void on_close(connection_hdl hdl);
 	void on_message(connection_hdl hdl, web_server::message_ptr msg);
 
+	void send_response_message(xpacket *packet);
+
 private:
 	std::thread run_th_;
 	std::thread recv_th_;
