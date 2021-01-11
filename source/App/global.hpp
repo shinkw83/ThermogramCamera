@@ -42,8 +42,8 @@ public:
 		stream_from_camera_address_ = "inproc://stream_from_camera";
 		stream_for_client_address_ = "inproc://stream_for_client";
 
-		int api_port_ = 6885;
-		int web_port_ = 8890;
+		api_port_ = 6885;
+		web_port_ = 8890;
 	}
 
 	virtual ~g_data() {
