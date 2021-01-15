@@ -3,6 +3,8 @@
 #include "raspicam_agent.h"
 #include "accept_manager.h"
 #include "websocket_server.h"
+#include "lepton_agent.h"
+#include "mqtt_agent.h"
 
 void print_usage() {
 	std::cout << "Usage: cam_agent [-c configuration_file_path]" << std::endl;
@@ -40,8 +42,18 @@ void init_config(std::string path) {
 	int web_port = cfg.getiValue("OPEN_PORT", "WEB", 8890);
 	g_data::set_web_port(web_port);
 
+	std::string mq_addr = cfg.str("MQTT", "ADDRESS", "");
+	std::string mq_user = cfg.str("MQTT", "USER", "");
+	std::string mq_passwd = cfg.str("MQTT", "PASSWORD", "");
+	std::string mq_id = cfg.str("MQTT", "ID", "");
+	g_data::set_mqtt_info(mq_addr, mq_user, mq_passwd, mq_id);
+
 	g_data::log(INFO_LOG_LEVEL, "[Config] Websocket Port : %d", web_port);
 	g_data::log(INFO_LOG_LEVEL, "[Config] API Port : %d", api_port);
+	g_data::log(INFO_LOG_LEVEL, "[Config] MQTT address : %s", mq_addr.c_str());
+	g_data::log(INFO_LOG_LEVEL, "[Config] MQTT username : %s", mq_user.c_str());
+	g_data::log(INFO_LOG_LEVEL, "[Config] MQTT password : %s", mq_passwd.c_str());
+	g_data::log(INFO_LOG_LEVEL, "[Config] MQTT client id : %s", mq_id.c_str());
 }
 
 int main(int argc, char **argv) {
@@ -68,8 +80,10 @@ int main(int argc, char **argv) {
 
 	agent_broker broker_;
 	raspicam_agent picam_th_(&broker_);
+	lepton_agent lepton_th_(&broker_);
 	accept_manager accept_th_(g_data::api_port(), &broker_);
-	websocket_server websocket_th_(&broker_);
+	//websocket_server websocket_th_(&broker_);
+	mqtt_agent mqtt_th_;
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::seconds(3));

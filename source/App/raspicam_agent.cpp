@@ -17,6 +17,8 @@ raspicam_agent::raspicam_agent(agent_broker *broker) {
 	jpg_compressor_ = tjInitCompress();
 	jpg_buf_ = tjAlloc(width_ * height_ * 3);
 
+	compress_rate_ = 75;
+
 	capture_th_ = std::thread(&raspicam_agent::capture, this);
 }
 
@@ -50,8 +52,8 @@ void raspicam_agent::capture() {
 			}
 		}
 
-		// todo get thermogram index
-		uint32_t cur_thermogram_index = 0;
+		// get thermogram index
+		uint32_t cur_thermogram_index = broker_->thermogram_index();
 		if (last_thermogram_index_ == cur_thermogram_index) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			continue;

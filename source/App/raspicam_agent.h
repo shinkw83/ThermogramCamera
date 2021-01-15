@@ -20,7 +20,7 @@ private:
 	tjhandle jpg_compressor_;
 	uint8_t *jpg_buf_;
 
-	uint32_t last_thermogram_index_;
+	uint32_t last_thermogram_index_ = 0;
 
 	std::thread capture_th_;
 	std::atomic<bool> run_flag_;

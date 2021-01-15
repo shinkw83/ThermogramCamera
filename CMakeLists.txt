@@ -40,6 +40,10 @@ target_link_libraries(cam_agent
 	opencv_core
 	opencv_highgui
 	opencv_imgproc
+	opencv_imgcodecs
+	leptonSDK
+	paho-mqtt3as
+	paho-mqttpp3
 )
 
 set_target_properties(cam_agent PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)

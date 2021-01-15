@@ -57,6 +57,22 @@ public:
 		data->logmgr_ = new LogMgrC(log_path.c_str(), "cam_agent");
 	}
 
+	static void set_mqtt_info(std::string address, std::string user, std::string passwd, std::string id) {
+		g_data *data = g_data::GetInstance();
+		data->mqtt_address_ = address;
+		data->mqtt_user_ = user;
+		data->mqtt_password_ = passwd;
+		data->mqtt_client_id_ = id;
+	}
+
+	static void get_mqtt_info(std::string &address, std::string &user, std::string &passwd, std::string &id) {
+		g_data *data = g_data::GetInstance();
+		address = data->mqtt_address_;
+		user = data->mqtt_user_;
+		passwd = data->mqtt_password_;
+		id = data->mqtt_client_id_;
+	}
+
 	static zmq::context_t &context() {
 		g_data *data = g_data::GetInstance();
 		return data->ctx_;
@@ -139,4 +155,9 @@ private:
 
 	std::string stream_from_camera_address_;
 	std::string stream_for_client_address_;
+
+	std::string mqtt_address_;
+	std::string mqtt_user_;
+	std::string mqtt_password_;
+	std::string mqtt_client_id_;
 };
